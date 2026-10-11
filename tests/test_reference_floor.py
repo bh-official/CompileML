@@ -101,6 +101,25 @@ def test_fit_reference_rejects_bad_input(data):
         fit_reference(X[:500], np.zeros(500, dtype=int))
 
 
+def test_a_rare_two_valued_column_keeps_its_bin():
+    """A 0/1 indicator below the 2% leaf minimum still reaches the floor.
+
+    Before 0.9.2 the binning tree could not split it, so the floor ignored a
+    column that decides 1% of rows outright — and the floor gate got lenient.
+    """
+    rng = np.random.default_rng(5)
+    n = 20000
+    x = rng.standard_normal(n)
+    rare = (rng.random(n) < 0.01).astype(float)  # 1% of rows, never an event
+    common = (rng.random(n) < 0.3).astype(float)
+    y = np.where(rare == 1, 0, (rng.random(n) < 1 / (1 + np.exp(-x))).astype(int))
+    ref = fit_reference(np.column_stack([x, rare, common]), y, feature_names=["x", "rare", "c"])
+    assert ref.thresholds[1] == [0.5] and len(ref.woe[1]) == 2
+    assert ref.information_value["rare"] > 0.05
+    assert ref.coefficients["rare"] != 0
+    assert ref.thresholds[2] == [0.5]  # a common 0/1 column: the cut the tree always made
+
+
 # ------------------------------------------------------ the target axis (4.2)
 def test_alpha_axis_sweeps_the_target(data, reference):
     X, teacher, y = data

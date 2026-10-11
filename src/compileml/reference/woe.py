@@ -78,9 +78,17 @@ class _WOEEncoder(BaseEstimator, TransformerMixin):
                 min_samples_leaf=self.min_samples_leaf,
                 random_state=self.random_state,
             )
+            values = np.unique(column)
             edges: np.ndarray
-            if np.unique(column).size < 2:
+            if values.size < 2:
                 edges = np.empty(0, dtype=float)  # constant feature: one bin
+            elif values.size == 2:
+                # Already binned: the one possible cut is between the two
+                # values, where the tree would put it. The leaf minimum stops
+                # a tree choosing cut points on noise; with no choice to make,
+                # a rare value (a 0/1 indicator at 1%) keeps its own bin
+                # instead of silently merging into the common one.
+                edges = np.array([(values[0] + values[1]) / 2.0])
             else:
                 tree.fit(column.reshape(-1, 1), y)
                 inner = tree.tree_.feature != -2  # -2 is sklearn's leaf sentinel
@@ -162,6 +170,10 @@ def fit_reference(
         kind: Only ``"woe_logit"`` today — supervised binning,
             weight-of-evidence encoding, then logistic regression.
         max_bins: Maximum bins per feature (shallow by design).
+        min_samples_leaf: Smallest bin, as a share of rows, when a tree
+            chooses the cut points. A column with exactly two values is
+            already binned and keeps both bins whatever their sizes, so a
+            rare 0/1 indicator still reaches the floor.
         cv: Folds used to choose ``C``. The WOE tables are refit inside each
             fold, so the choice is not made against leaked encodings.
 

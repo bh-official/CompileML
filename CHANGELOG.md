@@ -7,7 +7,37 @@ inside each artifact (`schema_version`).
 
 ## [Unreleased]
 
-## [0.9.1] - 2026-09-27
+## [0.9.2] - 2026-10-11
+
+The WoE floor no longer ignores rare 0/1 columns. No change to the runtime,
+the exporters, the artifact schema, or the benchmark, whose features are all
+continuous.
+
+`fit_reference` bins each feature with a shallow tree whose leaves must hold
+at least 2% of rows. A two-valued column whose rarer value fell below 2%
+could not be split, so it landed in one bin and carried no information: the
+floor silently ignored it. This surfaced on public hospital-readmission data
+(#76), where one-hot columns for rare discharge outcomes were lost, including
+patients who died, 1.5% of rows and never readmitted. The floor's Gini there
+rises from 0.235 to 0.300.
+
+It matters beyond the reference itself. `compile_selected`'s floor gate
+compares against this model, and so does validation check 10 when it is given
+a fitted reference. A weakened floor let
+through artifacts a fair one would have stopped. And 0.9.1 advises adding
+0/1 missing-indicator columns, exactly the kind of column the floor dropped.
+
+### Fixed
+- A column with exactly two values is already binned. The floor now cuts it
+  between the two values, where the tree would, whatever the size of the
+  rarer one. The 2% minimum still governs the cut points the tree chooses on
+  columns with more values, which is what it exists for. A 0/1 column the
+  tree could already split gets the same cut as before.
+- On data with rare two-valued columns, floor figures change and the floor
+  gets stronger: a floor gate or check 10 that passed may now fail. That is
+  the fix working.
+
+## [0.9.1] - 2026-10-10
 
 Missing values are refused instead of mis-compiled. No change to the runtime,
 the exporters, the artifact schema, or any artifact built from data without
