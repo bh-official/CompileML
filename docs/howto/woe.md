@@ -77,10 +77,12 @@ Two things follow from the inputs being bins:
   reason says the applicant's bin scored worse than the baseline's bin, not
   where inside the bin they fall.
 - **The baseline should be a bin.** Attribution is measured against the
-  `baseline` row, and a row equal to the baseline has no reasons at all. A
-  per-column median of WOE values need not be any bin's value, so pass the WOE
-  value of the bin you mean as the reference, such as the most common bin of
-  each column.
+  `baseline` row, and a row equal to the baseline has no reasons at all.
+  `compile_selected` uses the per-column median of the development rows, which
+  for a WOE column is a bin's value except at an exact tie, when the two middle
+  rows sit in different bins and the median falls between them. If you call
+  `build_artifact` directly, pass the WOE value of the bin you mean as the
+  reference, such as the most common bin of each column.
 
 ## Monotone directions
 
@@ -94,9 +96,11 @@ artifact = build_artifact(…, monotone_constraints=[-1, -1, -1, -1])
 ```
 
 The build re-verifies the compiled trees against the declaration, as
-described in [Tuning](tuning.md#enforcing-monotone-directions). Declaring the
-wrong sign makes the build raise. What this guarantees is monotonicity in the
-**WOE value**. Whether risk is monotone in the raw attribute is decided by how
+described in [Tuning](tuning.md#enforcing-monotone-directions). If the declaration
+disagrees with the trees, the build raises. A wrong sign used for both training
+and the declaration is not caught: it constrains the model against the data, and
+you see it as lost discrimination. What the check guarantees is monotonicity in
+the **WOE value**. Whether risk is monotone in the raw attribute is decided by how
 you bin it.
 
 ## Missing values

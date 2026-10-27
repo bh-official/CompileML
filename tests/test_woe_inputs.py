@@ -229,7 +229,9 @@ def test_declared_direction_is_in_woe_units(data):
 def test_a_missing_bin_is_an_ordinary_woe_value_and_nan_is_not_that_bin(data):
     X, y = data
     X = X.copy()
-    gone = np.random.default_rng(3).random(N) < 0.1
+    # Draw the "missing" rows from the riskier (bad) rows, so the trees have a reason
+    # to split them off the baseline bin instead of leaving it to chance.
+    gone = (y == 1) & (np.random.default_rng(3).random(N) < 0.3)
     X[gone, 3] = 0.9  # the WOE assigned to "income missing", scored like any bin
     model = train_whitebox(X, y.astype(float), n_estimators=40)[0]
     art = _build(model, X, y)
